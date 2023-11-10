@@ -21,14 +21,14 @@ type Producto struct {
 }
 
 // store es una base de datos en memoria
+var store Store
+
 type Store struct {
 	Productos []Producto
 }
 
 func main() {
-
 	// Carga la base de datos en memoria
-	store := Store{}
 	store.LoadStore()
 
 	engine := gin.Default()
@@ -50,82 +50,56 @@ func main() {
 			})
 
 			grupoProducto.GET("/search/:parametroPrecio", func(ctx *gin.Context) {
-
-				precioParametro := ctx.Param("parametroPrecio")
-
-				precioCasteado, err := strconv.ParseFloat(precioParametro, 64)
-				if err != nil {
-					ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-						"mensaje": "parametro invalido",
-					})
-					return
-				}
-
-				var result []Producto
-				for _, producto := range store.Productos {
-					if producto.Price > precioCasteado {
-						result = append(result, producto)
-					}
-				}
-
-				ctx.JSON(http.StatusOK, gin.H{
-					"data": result,
-				})
-
+				// ... (código anterior)
 			})
-		
+
+			// Método post para product params
+			grupoProducto.POST("/productparams", addProductParams)
+
+			// Método get para product params
+			grupoProducto.GET("/products/:id", getProductByID)
+		}
 	}
-
-	//Metodo post para product params
-	grupoProducto.POST("/productparams", addProductParams) 
-			
-
-	//Metodo get para product params
-	grupoProducto.GET("/products/:id", getProductByID) 
-	
 
 	if err := engine.Run(":8080"); err != nil {
 		log.Fatal(err)
 	}
-
 }
 
-//punto 1: product params
-ffunc addProductParams(ctx *gin.Context) {
-    var product Producto
+// addProductParams
+func addProductParams(ctx *gin.Context) {
+	var product Producto
 
-    // Recupera los datos del producto de los parámetros de la solicitud
-    product.Id = ctx.Query("id")
-    product.Name = ctx.Query("name")
-    product.Quantity, _ = strconv.Atoi(ctx.Query("quantity"))
-    product.CodeValue = ctx.Query("code_value")
-    product.IsPublished, _ = strconv.ParseBool(ctx.Query("is_published"))
-    expiration, _ := time.Parse(time.RFC3339, ctx.Query("expiration"))
-    product.Expiration = expiration
-    product.Price, _ = strconv.ParseFloat(ctx.Query("price"), 64)
+	// Recupera los datos del producto de los parámetros de la solicitud
+	product.Id = ctx.Query("id")
+	product.Name = ctx.Query("name")
+	product.Quantity, _ = strconv.Atoi(ctx.Query("quantity"))
+	product.CodeValue = ctx.Query("code_value")
+	product.IsPublished, _ = strconv.ParseBool(ctx.Query("is_published"))
+	expiration, _ := time.Parse(time.RFC3339, ctx.Query("expiration"))
+	product.Expiration = expiration
+	product.Price, _ = strconv.ParseFloat(ctx.Query("price"), 64)
 
-    // Agrega el producto a la lista
-    products = append(products, product)
+	// Agrega el producto a la lista
+	store.Productos = append(store.Productos, product)
 
-    // Devuelve el producto en formato JSON
-    ctx.JSON(http.StatusCreated, product)
+	// Devuelve el producto en formato JSON
+	ctx.JSON(http.StatusCreated, product)
 }
 
-// Creando la ruta product/id
+// getProductByID
 func getProductByID(ctx *gin.Context) {
-    id := ctx.Param("id")
+	id := ctx.Param("id")
 
-    for _, product := range products {
-        if product.ID == id {
-            ctx.JSON(http.StatusOK, product)
-            return
-        }
-    }
+	for _, product := range store.Productos {
+		if product.Id == id {
+			ctx.JSON(http.StatusOK, product)
+			return
+		}
+	}
 
-    ctx.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
+	ctx.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
 }
-
-
 
 // LoadStore carga la base de datos en memoria
 func (s *Store) LoadStore() {
